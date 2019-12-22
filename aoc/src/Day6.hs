@@ -1,6 +1,8 @@
+module Day6(printResult) where
+
 import Data.Map.Strict hiding (map)
 
-inputFile = "input"
+inputFile = "test/resources/day6/input"
 
 data Object = COM | Object { name :: String, center :: String } deriving Show
 
@@ -42,7 +44,7 @@ jumps m a b = let
     in
         distToLca pTa + distToLca pTb
 
-main = do
+printResult = do
     input <- readFile inputFile
     let m = parseObjects (lines input)
     -- print (toList m)
