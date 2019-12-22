@@ -4,4 +4,5 @@ import IntcodeSpec as IS
 import Test.Hspec
 
 main :: IO ()
-main = hspec $ IS.spec
+main = hspec $ do 
+    IS.spec
