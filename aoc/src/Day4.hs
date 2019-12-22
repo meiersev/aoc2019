@@ -1,3 +1,4 @@
+module Day4(printResult) where
 -- inputLow = 0
 inputLow = 134564
 inputHigh = 585159
@@ -40,5 +41,5 @@ validPwd x = and [is6Digits x, inRange x, hasEqualAdjacent 2 (show x), digitsAsc
 
 nValidInRange = length (filter validPwd [inputLow..inputHigh])
 
-main = print nValidInRange
+printResult = print nValidInRange
 

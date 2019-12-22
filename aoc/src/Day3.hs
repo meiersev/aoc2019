@@ -1,3 +1,4 @@
+module Day3(printResult) where
 -- input1 = ["R8","U5","L5","D3"]
 -- input2 = ["U7","R6","D4","L4"]
 -- input1 = ["R75","D30","R83","U83","L12","D49","R71","U7","L72"]
@@ -122,8 +123,8 @@ addEach ls = map (\x -> fst x + snd x) ls
 
 -- i1Segments = segments (fromInput input1)
 -- i2Segments = segments (fromInput input2)
-main = let p1 = fromInput input1
-           p2 = fromInput input2
-           is = (intersections p1 p2) in do
+printResult = let p1 = fromInput input1
+                  p2 = fromInput input2
+                  is = (intersections p1 p2) in do
     print (minimum (map manhattenOrigin is))
     print (minimum (addEach (zip (stepsPerIs p1 is) (stepsPerIs p2 is))))

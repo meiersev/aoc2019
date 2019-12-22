@@ -1,3 +1,4 @@
+module Day12(printResult1, printResult2) where
 -- <x=-1, y=0, z=2>
 -- <x=2, y=-10, z=-7>
 -- <x=4, y=-8, z=8>
@@ -83,7 +84,7 @@ printMoons (m:mns) = do
     putStrLn (show m)
     printMoons mns
 
-main1 = do
+printResult1 = do
     let endState = iterateUpdate 1000 moons
     let energy = totalEnergy endState
     printMoons endState
@@ -103,7 +104,7 @@ iterateUntilEq res@(a,b,c) mns stepCtr
     | c == -1 && isSameState mns z = iterateUntilEq (a, b, stepCtr) mns stepCtr
     | otherwise = iterateUntilEq res (updated mns) (stepCtr + 1)
 
-main = do
+printResult2 = do
     let sue@(a,b,c) = stepsUntilEq
     print sue
     print (foldl lcm 1 [a,b,c])
