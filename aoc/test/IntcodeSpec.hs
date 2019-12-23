@@ -17,3 +17,6 @@ spec =
 
         it "does combination (day2 example)" $
             run 0 [1,1,1,4,99,5,6,0,99] `shouldBe` [30,1,1,4,2,5,6,0,99]
+
+        it "can handle parameter modes" $
+            run 0 [1002,4,3,4,33] `shouldBe` [1002,4,3,4,99]
