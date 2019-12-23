@@ -20,3 +20,27 @@ spec =
 
         it "can handle parameter modes" $
             run 0 [1002,4,3,4,33] `shouldBe` [1002,4,3,4,99]
+
+        it "can compare in position mode, equal" $
+            run 0 [8,5,6,0,99,8,8] `shouldBe` [1,5,6,0,99,8,8]
+
+        it "can compare in position mode, not equal" $
+            run 0 [8,5,6,0,99,7,8] `shouldBe` [0,5,6,0,99,7,8]
+
+        it "can compare in immediate mode, equal" $
+            run 0 [1108,8,8,5,99,-1] `shouldBe` [1108,8,8,5,99,1]
+
+        it "can compare in immediate mode, not equal" $
+            run 0 [1108,7,8,5,99,-1] `shouldBe` [1108,7,8,5,99,0]
+
+        it "can compare in position mode, less than" $
+            run 0 [7,5,6,0,99,7,8] `shouldBe` [1,5,6,0,99,7,8]
+
+        it "can compare in position mode, not less than" $
+            run 0 [7,5,6,0,99,8,8] `shouldBe` [0,5,6,0,99,8,8]
+
+        it "can compare in immediate mode, less than" $
+            run 0 [1107,7,8,5,99,-1] `shouldBe` [1107,7,8,5,99,1]
+
+        it "can compare in immediate mode, not less than" $
+            run 0 [1107,8,8,5,99,-1] `shouldBe` [1107,8,8,5,99,0]
