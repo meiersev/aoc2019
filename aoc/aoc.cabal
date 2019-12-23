@@ -56,6 +56,7 @@ test-suite aoc-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      UtilsSpec
       IntcodeSpec
   hs-source-dirs:
       test
