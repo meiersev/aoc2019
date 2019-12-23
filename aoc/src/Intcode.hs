@@ -66,10 +66,9 @@ runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (ne
 
 runOpWithIO :: Int -> Operation -> [Int] -> (Int, IO [Int])
 runOpWithIO pos op state
-    | opCode op `elem` [99,1,2] = runOpWithoutIO pos op state
     | opCode op == 3 = (pos+2, inputInstr pos state)
     | opCode op == 4 = (pos+2, outputInstr pos state)
-    | otherwise = error ("unsupported operation " ++ (show (opCode op)))
+    | otherwise = runOpWithoutIO pos op state
 
 runWithIO :: Int -> IO [Int] -> IO [Int]
 runWithIO pos state = do
