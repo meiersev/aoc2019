@@ -6,7 +6,7 @@ data ParameterMode = Position | Immediate deriving (Eq, Show)
 toMode :: Int -> ParameterMode
 toMode 0 = Position
 toMode 1 = Immediate
-toMode x = error ("unsupported parameter mode " ++ (show x))
+toMode x = error $ "unsupported parameter mode " ++ (show x)
 
 data Operation = Operation {opCode :: Int, parameterModes :: [ParameterMode]} deriving Show
 parseOperation :: Int -> Operation
@@ -29,7 +29,7 @@ valAt pos state Immediate = state!!pos
 doOp :: Int -> [Int] -> [ParameterMode] -> (Int -> Int -> Int) -> Int
 doOp pos state modes biFunc = let
     paddedModes = padParameterModes 2 modes
-    in (valAt (pos+1) state (head paddedModes)) `biFunc` (valAt (pos+2) state (last paddedModes))
+    in (valAt (pos+1) state $ head paddedModes) `biFunc` (valAt (pos+2) state $ last paddedModes)
 
 doAdd :: Int -> [Int] -> [ParameterMode] -> Int
 doAdd pos state modes = doOp pos state modes (+)
@@ -60,8 +60,8 @@ doJumpIfFalse pos state modes = doJumpIf pos state modes (\x -> x == 0)
 doJumpIf :: Int -> [Int] -> [ParameterMode] -> (Int -> Bool) -> (Int, [Int])
 doJumpIf pos state modes test = let
     paddedModes = padParameterModes 2 modes
-    doJump = test (valAt (pos+1) state (head paddedModes))
-    in if doJump then (valAt (pos+2) state (last paddedModes), state) else (pos + 3, state)
+    doJump = test $ valAt (pos+1) state $ head paddedModes
+    in if doJump then (valAt (pos+2) state $ last paddedModes, state) else (pos + 3, state)
 
 doLessThan pos state modes = doTest pos state modes (<) 
 doEquals pos state modes = doTest pos state modes (==)
@@ -69,7 +69,7 @@ doEquals pos state modes = doTest pos state modes (==)
 doTest :: Int -> [Int] -> [ParameterMode] -> (Int -> Int -> Bool) -> [Int]
 doTest pos state modes test = let
     paddedModes = padParameterModes 2 modes
-    set = test (valAt (pos+1) state (head paddedModes)) (valAt (pos+2) state (last paddedModes))
+    set = test (valAt (pos+1) state $ head paddedModes) (valAt (pos+2) state $ last paddedModes)
     val = if set then 1 else 0
     in replace (state!!(pos+3)) val state 
 
@@ -82,7 +82,7 @@ runOp pos op state
     | opCode op == 6 = doJumpIfFalse pos state (parameterModes op)
     | opCode op == 7 = (pos+4, doLessThan pos state (parameterModes op))
     | opCode op == 8 = (pos+4, doEquals pos state (parameterModes op))
-    | otherwise = error ("unsupported operation " ++ (show (opCode op)))
+    | otherwise = error $ "unsupported operation " ++ (show $ opCode op)
 
 runOpWithoutIO :: Int -> Operation -> [Int] -> (Int, IO [Int])
 runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (newPos, return newState)
@@ -96,12 +96,12 @@ runOpWithIO pos op state
 runWithIO :: Int -> IO [Int] -> IO [Int]
 runWithIO pos state = do
     s <- state
-    let op = parseOperation (s!!pos)
+    let op = parseOperation $ s!!pos
         (nextPos, nextState) = runOpWithIO pos op s
-    if (nextPos < 0) then nextState
+    if nextPos < 0 then nextState
     else runWithIO nextPos nextState
 
 run :: Int -> [Int] -> [Int]
-run pos state = let (nextPos, nextState) = runOp pos (parseOperation (state!!pos)) state in
+run pos state = let (nextPos, nextState) = runOp pos (parseOperation $ state!!pos) state in
     if (nextPos < 0) then nextState
     else run nextPos nextState

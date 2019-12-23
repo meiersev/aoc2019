@@ -27,7 +27,7 @@ runProgPart1 :: IO()
 runProgPart1 = do
     input <- readFile inputFile
     let split = splitString input ','
-        numbers = return (map (\s -> read s :: Int) split)
+        numbers = return $ map (\s -> read s :: Int) split
     runWithIO 0 numbers
     return ()
 
@@ -37,5 +37,5 @@ testPart2 = do
     whichTest <- getLine
     let testN = read whichTest :: Int
         input = testInputsPart2!!(testN-1)
-    runWithIO 0 (return input)
+    runWithIO 0 $ return input
     return ()
