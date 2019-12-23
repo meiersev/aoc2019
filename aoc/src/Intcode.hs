@@ -34,10 +34,13 @@ runOp pos 1 state = (pos+4, doBiFunc pos state doAdd)
 runOp pos 2 state = (pos+4, doBiFunc pos state doMul) 
 runOp _ x _ = error ("unsupported operation " ++ (show x))
 
+runOpWithoutIO :: Int -> Int -> [Int] -> (Int, IO [Int])
+runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (newPos, return newState)
+
 runOpWithIO :: Int -> Int -> [Int] -> (Int, IO [Int])
-runOpWithIO pos 99 state = (-1, return state)
-runOpWithIO pos 1 state = let (newPos, newState) = runOp pos 1 state in (newPos, return newState)
-runOpWithIO pos 2 state = let (newPos, newState) = runOp pos 2 state in (newPos, return newState)
+runOpWithIO pos 99 state = runOpWithoutIO pos 99 state
+runOpWithIO pos 1 state = runOpWithoutIO pos 1 state
+runOpWithIO pos 2 state = runOpWithoutIO pos 2 state
 runOpWithIO pos 3 state = (pos+2, inputInstr pos state)
 runOpWithIO pos 4 state = (pos+2, outputInstr pos state)
 runOpWithIO _ x _ = error ("unsupported operation " ++ (show x))
