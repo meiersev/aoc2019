@@ -1,6 +1,6 @@
 module Main where
 
-import Day2
+import Day5
 
 main :: IO ()
-main = print result
+main = testIOOps
