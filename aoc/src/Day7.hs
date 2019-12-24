@@ -51,8 +51,8 @@ phasesPt2 = permutations [5..9]
 initAmplifiers :: Program -> [Int] -> [ProgramContext]
 initAmplifiers prog phases = ampA : amps
   where
-    ampA = ProgramContext prog 0 [head phases, 0] [] Ready 
-    amps = map (\p -> ProgramContext prog 0 [p] [] Ready) $ tail phases
+    ampA = ProgramContext prog 0 [head phases, 0] [] Ready 0
+    amps = map (\p -> ProgramContext prog 0 [p] [] Ready 0) $ tail phases
 
 anyAmpWithStatus s = any (\amp -> status amp == s)
 

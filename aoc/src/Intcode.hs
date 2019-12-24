@@ -25,11 +25,13 @@ data ProgramContext = ProgramContext
     , inputs :: [Int]
     , outputs :: [Int]
     , status :: ProgramStatus
+    , relBase :: Int
     } deriving Show
 
 data ParameterMode 
     = Position 
     | Immediate 
+    | Relative
     deriving (Eq, Show)
 
 toMode :: Int -> ParameterMode
@@ -51,7 +53,7 @@ parseOperation x = let
     in Operation opCode modes
 
 nextOperation :: ProgramContext -> Operation
-nextOperation (ProgramContext prog pos _ _ _) = parseOperation $ prog!!pos
+nextOperation ctx = parseOperation $ (prog ctx)!!(pos ctx)
 
 padParameterModes :: Int -> [ParameterMode] -> [ParameterMode]
 padParameterModes n modes = let
@@ -110,42 +112,43 @@ doTest pos state modes test = let
     in replace (state!!(pos+3)) val state 
 
 runOp :: ProgramContext -> ProgramContext
-runOp ctx@(ProgramContext state pos inputs outputs status) = case opCode $ nextOperation ctx of
-    99 -> ProgramContext state (-1) inputs outputs Finished
-    1 -> ProgramContext newState (pos+4) inputs outputs status 
+runOp ctx = case opCode $ nextOperation ctx of
+    99 -> ctx { status = Finished }
+    1 -> ctx { prog = newState, pos = pos'+4 }
       where 
-        newState = doBiFunc pos state (parameterModes $ nextOperation ctx) doAdd
-    2 -> ProgramContext newState (pos+4) inputs outputs status
+        newState = doBiFunc pos' state (parameterModes $ nextOperation ctx) doAdd
+    2 -> ctx { prog = newState, pos = pos'+4 }
       where
-        newState = doBiFunc pos state (parameterModes $ nextOperation ctx) doMul
+        newState = doBiFunc pos' state (parameterModes $ nextOperation ctx) doMul
     3 -> 
-        if length inputs > 0 
-        then ProgramContext nextState (pos+2) (tail inputs) outputs status
-        else ProgramContext state pos inputs outputs Suspended
+        if length inputs' > 0 
+        then ctx { prog = nextState, pos = pos'+2, inputs = tail inputs' }
+        else ctx { status = Suspended }
       where 
-        nextState = replace (valAt (pos+1) state Immediate) (head inputs) state 
-    4 -> ProgramContext state (pos+2) inputs (output:outputs) status
+        nextState = replace (valAt (pos'+1) state Immediate) (head inputs') state 
+    4 -> ctx { pos = pos'+2, outputs = output:outputs' }
       where 
-        output = valAt (pos+1) state $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
-    5 -> ProgramContext state newPos inputs outputs status
+        output = valAt (pos'+1) state $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+    5 -> ctx { pos = doJumpIfTrue pos' state (parameterModes $ nextOperation ctx) }
+    6 -> ctx { pos = doJumpIfFalse pos' state (parameterModes $ nextOperation ctx) }
+    7 -> ctx { prog = newState, pos = pos'+4 }
       where
-        newPos = doJumpIfTrue pos state (parameterModes $ nextOperation ctx)
-    6 -> ProgramContext state newPos inputs outputs status
-      where 
-        newPos = doJumpIfFalse pos state (parameterModes $ nextOperation ctx)
-    7 -> ProgramContext newState (pos+4) inputs outputs status
+        newState = doLessThan pos' state (parameterModes $ nextOperation ctx)
+    8 -> ctx { prog = newState, pos = pos'+4 }
       where
-        newState = doLessThan pos state (parameterModes $ nextOperation ctx)
-    8 -> ProgramContext newState (pos+4) inputs outputs status
-      where
-        newState = doEquals pos state (parameterModes $ nextOperation ctx)
+        newState = doEquals pos' state (parameterModes $ nextOperation ctx)
     _ -> error $ "unsupported operation " ++ (show $ opCode $ nextOperation ctx)
+  where
+    state = prog ctx
+    pos' = pos ctx
+    inputs' = inputs ctx
+    outputs' = outputs ctx
 
 runSimple :: Program -> ProgramContext
-runSimple prog = run $ ProgramContext prog 0 [] [] Ready
+runSimple prog = run $ ProgramContext prog 0 [] [] Ready 0
 
 runWithInputs :: Program -> [Int] -> ProgramContext
-runWithInputs prog ins = run $ ProgramContext prog 0 ins [] Ready
+runWithInputs prog ins = run $ ProgramContext prog 0 ins [] Ready 0
 
 run :: ProgramContext -> ProgramContext
 run ctx = case status ctx of 
