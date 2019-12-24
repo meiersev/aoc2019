@@ -28,4 +28,3 @@ winnerCombo ((a, b, c):xs)
 
 result :: Int
 result = let (noun, verb) = winnerCombo progResults in 100 * (noun) + (verb)
-

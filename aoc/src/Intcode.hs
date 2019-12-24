@@ -1,11 +1,8 @@
 module Intcode
   (
     Program
-  , ProgramStatus
-  , ProgramContext
-
-  , prog
-  , outputs
+  , ProgramStatus (..)
+  , ProgramContext (ProgramContext, prog, outputs)
 
   , run
   , runSimple

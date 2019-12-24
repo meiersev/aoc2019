@@ -42,4 +42,3 @@ validPwd x = and [is6Digits x, inRange x, hasEqualAdjacent 2 (show x), digitsAsc
 nValidInRange = length (filter validPwd [inputLow..inputHigh])
 
 printResult = print nValidInRange
-

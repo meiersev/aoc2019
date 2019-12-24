@@ -51,4 +51,3 @@ printResult = do
     let resultPart1 = sum (map (\el -> nOrbitsClosure el m) (elems m))
     print resultPart1
     print (jumps m "YOU" "SAN")
-
