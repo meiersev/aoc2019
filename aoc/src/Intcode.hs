@@ -1,6 +1,8 @@
-module Intcode(run, runWithIO, runWithIOStub) where 
+module Intcode(Program, run, runWithIO, runWithIOStub) where 
 
 import Utils
+
+type Program = [Int]
 
 data ParameterMode = Position | Immediate deriving (Eq, Show)
 toMode :: Int -> ParameterMode
@@ -22,42 +24,42 @@ padParameterModes n modes = let
     paddingSize = n - (length modes)
     in modes ++ (replicate paddingSize Position)
 
-valAt :: Int -> [Int] -> ParameterMode -> Int
+valAt :: Int -> Program -> ParameterMode -> Int
 valAt pos state Position = state!!(state!!pos)
 valAt pos state Immediate = state!!pos
 
-doOp :: Int -> [Int] -> [ParameterMode] -> (Int -> Int -> Int) -> Int
+doOp :: Int -> Program -> [ParameterMode] -> (Int -> Int -> Int) -> Int
 doOp pos state modes biFunc = let
     paddedModes = padParameterModes 2 modes
     in (valAt (pos+1) state $ head paddedModes) `biFunc` (valAt (pos+2) state $ last paddedModes)
 
-doAdd :: Int -> [Int] -> [ParameterMode] -> Int
+doAdd :: Int -> Program -> [ParameterMode] -> Int
 doAdd pos state modes = doOp pos state modes (+)
 
-doMul :: Int -> [Int] -> [ParameterMode] -> Int
+doMul :: Int -> Program -> [ParameterMode] -> Int
 doMul pos state modes = doOp pos state modes (*)
 
-doBiFunc :: Int -> [Int] -> [ParameterMode] -> (Int -> [Int] -> [ParameterMode] -> Int) -> [Int]
+doBiFunc :: Int -> Program -> [ParameterMode] -> (Int -> Program -> [ParameterMode] -> Int) -> Program
 doBiFunc pos state modes op = replace (state!!(pos+3)) (op pos state modes) state
 
-inputInstr :: Int -> [Int] -> IO [Int]
+inputInstr :: Int -> Program -> IO Program
 inputInstr pos state = do
     input <- getLine
     let i = read input :: Int
     return $ replace (valAt (pos+1) state Immediate) i state
 
-outputInstr :: Int -> [Int] -> ParameterMode -> IO [Int]
+outputInstr :: Int -> Program -> ParameterMode -> IO Program
 outputInstr pos state mode = do
     print $ valAt (pos+1) state mode
     return state
 
-doJumpIfTrue :: Int -> [Int] -> [ParameterMode] -> (Int, [Int])
+doJumpIfTrue :: Int -> Program -> [ParameterMode] -> (Int, Program)
 doJumpIfTrue pos state modes = doJumpIf pos state modes (\x -> x /= 0)
 
-doJumpIfFalse :: Int -> [Int] -> [ParameterMode] -> (Int, [Int])
+doJumpIfFalse :: Int -> Program -> [ParameterMode] -> (Int, Program)
 doJumpIfFalse pos state modes = doJumpIf pos state modes (\x -> x == 0)
 
-doJumpIf :: Int -> [Int] -> [ParameterMode] -> (Int -> Bool) -> (Int, [Int])
+doJumpIf :: Int -> Program -> [ParameterMode] -> (Int -> Bool) -> (Int, Program)
 doJumpIf pos state modes test = let
     paddedModes = padParameterModes 2 modes
     doJump = test $ valAt (pos+1) state $ head paddedModes
@@ -66,14 +68,14 @@ doJumpIf pos state modes test = let
 doLessThan pos state modes = doTest pos state modes (<) 
 doEquals pos state modes = doTest pos state modes (==)
 
-doTest :: Int -> [Int] -> [ParameterMode] -> (Int -> Int -> Bool) -> [Int]
+doTest :: Int -> Program -> [ParameterMode] -> (Int -> Int -> Bool) -> Program
 doTest pos state modes test = let
     paddedModes = padParameterModes 2 modes
     set = test (valAt (pos+1) state $ head paddedModes) (valAt (pos+2) state $ last paddedModes)
     val = if set then 1 else 0
     in replace (state!!(pos+3)) val state 
 
-runOp :: Int -> Operation -> [Int] -> (Int, [Int])
+runOp :: Int -> Operation -> Program -> (Int, Program)
 runOp pos op state
     | opCode op == 99 = (-1, state)
     | opCode op == 1 = (pos+4, doBiFunc pos state (parameterModes op) doAdd)
@@ -84,26 +86,26 @@ runOp pos op state
     | opCode op == 8 = (pos+4, doEquals pos state (parameterModes op))
     | otherwise = error $ "unsupported operation " ++ (show $ opCode op)
 
-runOpWithoutIO :: Int -> Operation -> [Int] -> (Int, IO [Int])
+runOpWithoutIO :: Int -> Operation -> Program -> (Int, IO [Int])
 runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (newPos, return newState)
 
-runOpWithIO :: Int -> Operation -> [Int] -> (Int, IO [Int])
+runOpWithIO :: Int -> Operation -> Program -> (Int, IO [Int])
 runOpWithIO pos op state
     | opCode op == 3 = (pos+2, inputInstr pos state)
     | opCode op == 4 = (pos+2, outputInstr pos state $ head $ parameterModes op)
     | otherwise = runOpWithoutIO pos op state
 
-runOpWithIOStub :: Int -> Operation -> [Int] -> [Int] -> (Int, [Int], [Int], [Int])
+runOpWithIOStub :: Int -> Operation -> Program -> [Int] -> (Int, Program, [Int], [Int])
 runOpWithIOStub pos op state inputs
     | opCode op == 3 = (pos+2, replace (valAt (pos+1) state Immediate) (head inputs) state, [], tail inputs)
     | opCode op == 4 = (pos+2, state, [valAt (pos+1) state $ head $ padParameterModes 1 $ parameterModes op], inputs)
     | otherwise = let (np, ns) = runOp pos op state in (np, ns, [], inputs)
 
 -- do not do IO operations, instead use inputs from provided list, return outputs
-runWithIOStub :: Int -> [Int] -> [Int] -> [Int]
+runWithIOStub :: Int -> Program -> [Int] -> [Int]
 runWithIOStub pos state inputs = runWithIOStubImpl pos state inputs []
 
-runWithIOStubImpl :: Int -> [Int] -> [Int] -> [Int] -> [Int]
+runWithIOStubImpl :: Int -> Program -> [Int] -> [Int] -> [Int]
 runWithIOStubImpl pos state inputs outputs = let 
     (nextPos, nextState, nextOuts, nextIns) = runOpWithIOStub pos (parseOperation $ state!!pos) state inputs
     accOutputs = outputs ++ nextOuts
@@ -111,7 +113,7 @@ runWithIOStubImpl pos state inputs outputs = let
         if (nextPos < 0) then accOutputs
         else runWithIOStubImpl nextPos nextState nextIns accOutputs
 
-runWithIO :: Int -> IO [Int] -> IO [Int]
+runWithIO :: Int -> IO Program -> IO Program
 runWithIO pos state = do
     s <- state
     let op = parseOperation $ s!!pos
@@ -119,7 +121,7 @@ runWithIO pos state = do
     if nextPos < 0 then nextState
     else runWithIO nextPos nextState
 
-run :: Int -> [Int] -> [Int]
+run :: Int -> Program -> Program
 run pos state = let (nextPos, nextState) = runOp pos (parseOperation $ state!!pos) state in
     if (nextPos < 0) then nextState
     else run nextPos nextState
