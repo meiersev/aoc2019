@@ -13,7 +13,9 @@ testInput = [3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0]
 inputFile = "test/resources/day7/input"
 
 runAmplifier :: Int -> Int -> Program -> Int
-runAmplifier phase signal prog = head $ runWithIOStub 0 prog [phase, signal]
+runAmplifier phase signal prog = head $ outputs resCtx
+  where 
+    resCtx = runWithInputs prog [phase, signal]
 
 chainAmplifiers :: [Int] -> Int -> Program -> Int
 chainAmplifiers (p:[]) signal prog = runAmplifier p signal prog

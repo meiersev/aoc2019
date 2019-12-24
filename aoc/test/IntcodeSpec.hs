@@ -3,56 +3,58 @@ module IntcodeSpec(spec) where
 import Test.Hspec
 import Intcode
 
+simpleEndState = prog.runSimple
+
 spec :: Spec
 spec = 
     describe "Intcode.run" $ do
         it "does addition (day2 example)" $
-            run 0 [1,0,0,0,99] `shouldBe` [2,0,0,0,99]
+            simpleEndState [1,0,0,0,99] `shouldBe` [2,0,0,0,99]
 
         it "does multiplication (day2 example)" $ 
-            run 0 [2,3,0,3,99] `shouldBe` [2,3,0,6,99]
+            simpleEndState [2,3,0,3,99] `shouldBe` [2,3,0,6,99]
 
         it "does multiplication after end (day2 example)" $
-            run 0 [2,4,4,5,99,0] `shouldBe` [2,4,4,5,99,9801]
+            simpleEndState [2,4,4,5,99,0] `shouldBe` [2,4,4,5,99,9801]
 
         it "does combination (day2 example)" $
-            run 0 [1,1,1,4,99,5,6,0,99] `shouldBe` [30,1,1,4,2,5,6,0,99]
+            simpleEndState [1,1,1,4,99,5,6,0,99] `shouldBe` [30,1,1,4,2,5,6,0,99]
 
         it "can handle parameter modes" $
-            run 0 [1002,4,3,4,33] `shouldBe` [1002,4,3,4,99]
+            simpleEndState [1002,4,3,4,33] `shouldBe` [1002,4,3,4,99]
 
         it "can compare in position mode, equal" $
-            run 0 [8,5,6,0,99,8,8] `shouldBe` [1,5,6,0,99,8,8]
+            simpleEndState [8,5,6,0,99,8,8] `shouldBe` [1,5,6,0,99,8,8]
 
         it "can compare in position mode, not equal" $
-            run 0 [8,5,6,0,99,7,8] `shouldBe` [0,5,6,0,99,7,8]
+            simpleEndState [8,5,6,0,99,7,8] `shouldBe` [0,5,6,0,99,7,8]
 
         it "can compare in immediate mode, equal" $
-            run 0 [1108,8,8,5,99,-1] `shouldBe` [1108,8,8,5,99,1]
+            simpleEndState [1108,8,8,5,99,-1] `shouldBe` [1108,8,8,5,99,1]
 
         it "can compare in immediate mode, not equal" $
-            run 0 [1108,7,8,5,99,-1] `shouldBe` [1108,7,8,5,99,0]
+            simpleEndState [1108,7,8,5,99,-1] `shouldBe` [1108,7,8,5,99,0]
 
         it "can compare in position mode, less than" $
-            run 0 [7,5,6,0,99,7,8] `shouldBe` [1,5,6,0,99,7,8]
+            simpleEndState [7,5,6,0,99,7,8] `shouldBe` [1,5,6,0,99,7,8]
 
         it "can compare in position mode, not less than" $
-            run 0 [7,5,6,0,99,8,8] `shouldBe` [0,5,6,0,99,8,8]
+            simpleEndState [7,5,6,0,99,8,8] `shouldBe` [0,5,6,0,99,8,8]
 
         it "can compare in immediate mode, less than" $
-            run 0 [1107,7,8,5,99,-1] `shouldBe` [1107,7,8,5,99,1]
+            simpleEndState [1107,7,8,5,99,-1] `shouldBe` [1107,7,8,5,99,1]
 
         it "can compare in immediate mode, not less than" $
-            run 0 [1107,8,8,5,99,-1] `shouldBe` [1107,8,8,5,99,0]
+            simpleEndState [1107,8,8,5,99,-1] `shouldBe` [1107,8,8,5,99,0]
 
         it "can run with IO stub (ex1, day5)" $
-            runWithIOStub 0 [3,9,8,9,10,9,4,9,99,-1,8] [8] `shouldBe` [1]
+            (outputs $ runWithInputs [3,9,8,9,10,9,4,9,99,-1,8] [8]) `shouldBe` [1]
 
         it "can run with IO stub (ex1, day5)" $
-            runWithIOStub 0 [3,9,8,9,10,9,4,9,99,-1,8] [9] `shouldBe` [0]
+            (outputs $ runWithInputs [3,9,8,9,10,9,4,9,99,-1,8] [9]) `shouldBe` [0]
 
         it "can run with IO stub (ex4, day5)" $
-            runWithIOStub 0 [3,3,1107,-1,8,3,4,3,99] [7] `shouldBe` [1]
+            (outputs $ runWithInputs [3,3,1107,-1,8,3,4,3,99] [7]) `shouldBe` [1]
 
         it "can run with IO stub (ex4, day5)" $
-            runWithIOStub 0 [3,3,1107,-1,8,3,4,3,99] [8] `shouldBe` [0]
+            (outputs $ runWithInputs [3,3,1107,-1,8,3,4,3,99] [8]) `shouldBe` [0]

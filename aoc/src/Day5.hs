@@ -18,17 +18,13 @@ testInputPart2_7 = [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,3
 
 testInputsPart2 = [testInputPart2_1, testInputPart2_2, testInputPart2_3, testInputPart2_4, testInputPart2_5, testInputPart2_6, testInputPart2_7]
 
-testIOOps :: IO()
-testIOOps = do
-    endState <- runWithIO 0 (return testInputReadWrite)
-    print endState
-
 runProgPart1 :: IO()
 runProgPart1 = do
     input <- readFile inputFile
     let split = splitString input ','
-        numbers = return $ map (\s -> read s :: Int) split
-    runWithIO 0 numbers
+    let numbers = map (\s -> read s :: Int) split
+    let resCtx = runWithInputs numbers [0]
+    print $ outputs resCtx
     return ()
 
 testPart2 :: IO()
@@ -37,5 +33,6 @@ testPart2 = do
     whichTest <- getLine
     let testN = read whichTest :: Int
         input = testInputsPart2!!(testN-1)
-    runWithIO 0 $ return input
+    let resCtx = runWithInputs input [5]
+    print $ outputs resCtx
     return ()

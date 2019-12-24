@@ -1,16 +1,50 @@
-module Intcode(Program, run, runWithIO, runWithIOStub) where 
+module Intcode
+  (
+    Program
+  , ProgramStatus
+  , ProgramContext
+
+  , prog
+  , outputs
+
+  , run
+  , runSimple
+  , runWithInputs
+  ) where 
 
 import Utils
 
 type Program = [Int]
 
-data ParameterMode = Position | Immediate deriving (Eq, Show)
+data ProgramStatus 
+    = Ready 
+    | Suspended 
+    | Finished
+    deriving Eq
+
+data ProgramContext = ProgramContext 
+    { prog :: Program
+    , pos :: Int
+    , inputs :: [Int]
+    , outputs :: [Int]
+    , status :: ProgramStatus
+    }
+
+data ParameterMode 
+    = Position 
+    | Immediate 
+    deriving (Eq, Show)
+
 toMode :: Int -> ParameterMode
 toMode 0 = Position
 toMode 1 = Immediate
 toMode x = error $ "unsupported parameter mode " ++ (show x)
 
-data Operation = Operation {opCode :: Int, parameterModes :: [ParameterMode]} deriving Show
+data Operation = Operation 
+    { opCode :: Int
+    , parameterModes :: [ParameterMode]
+    } deriving Show
+
 parseOperation :: Int -> Operation
 parseOperation x = let 
     digits = show x
@@ -18,6 +52,9 @@ parseOperation x = let
     opCode = read opCodeDigits
     modes = map (toMode.read.(\c -> [c])) (reverse modeDigits) 
     in Operation opCode modes
+
+nextOperation :: ProgramContext -> Operation
+nextOperation (ProgramContext prog pos _ _ _) = parseOperation $ prog!!pos
 
 padParameterModes :: Int -> [ParameterMode] -> [ParameterMode]
 padParameterModes n modes = let
@@ -53,17 +90,17 @@ outputInstr pos state mode = do
     print $ valAt (pos+1) state mode
     return state
 
-doJumpIfTrue :: Int -> Program -> [ParameterMode] -> (Int, Program)
 doJumpIfTrue pos state modes = doJumpIf pos state modes (\x -> x /= 0)
-
-doJumpIfFalse :: Int -> Program -> [ParameterMode] -> (Int, Program)
 doJumpIfFalse pos state modes = doJumpIf pos state modes (\x -> x == 0)
 
-doJumpIf :: Int -> Program -> [ParameterMode] -> (Int -> Bool) -> (Int, Program)
-doJumpIf pos state modes test = let
+doJumpIf :: Int -> Program -> [ParameterMode] -> (Int -> Bool) -> Int
+doJumpIf pos state modes test =
+    if doJump
+    then valAt (pos+2) state $ last paddedModes
+    else pos+3
+  where
     paddedModes = padParameterModes 2 modes
     doJump = test $ valAt (pos+1) state $ head paddedModes
-    in if doJump then (valAt (pos+2) state $ last paddedModes, state) else (pos + 3, state)
 
 doLessThan pos state modes = doTest pos state modes (<) 
 doEquals pos state modes = doTest pos state modes (==)
@@ -75,53 +112,48 @@ doTest pos state modes test = let
     val = if set then 1 else 0
     in replace (state!!(pos+3)) val state 
 
-runOp :: Int -> Operation -> Program -> (Int, Program)
-runOp pos op state
-    | opCode op == 99 = (-1, state)
-    | opCode op == 1 = (pos+4, doBiFunc pos state (parameterModes op) doAdd)
-    | opCode op == 2 = (pos+4, doBiFunc pos state (parameterModes op) doMul)
-    | opCode op == 5 = doJumpIfTrue pos state (parameterModes op)
-    | opCode op == 6 = doJumpIfFalse pos state (parameterModes op)
-    | opCode op == 7 = (pos+4, doLessThan pos state (parameterModes op))
-    | opCode op == 8 = (pos+4, doEquals pos state (parameterModes op))
-    | otherwise = error $ "unsupported operation " ++ (show $ opCode op)
+runOp :: ProgramContext -> ProgramContext
+runOp ctx@(ProgramContext state pos inputs outputs status) = case opCode $ nextOperation ctx of
+    99 -> ProgramContext state (-1) inputs outputs Finished
+    1 -> ProgramContext newState (pos+4) inputs outputs status 
+      where 
+        newState = doBiFunc pos state (parameterModes $ nextOperation ctx) doAdd
+    2 -> ProgramContext newState (pos+4) inputs outputs status
+      where
+        newState = doBiFunc pos state (parameterModes $ nextOperation ctx) doMul
+    3 -> 
+        if length inputs > 0 
+        then ProgramContext nextState (pos+2) (tail inputs) outputs status
+        else ProgramContext state pos inputs outputs Suspended
+      where 
+        nextState = replace (valAt (pos+1) state Immediate) (head inputs) state 
+    4 -> ProgramContext state (pos+2) inputs (output:outputs) status
+      where 
+        output = valAt (pos+1) state $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+    5 -> ProgramContext state newPos inputs outputs status
+      where
+        newPos = doJumpIfTrue pos state (parameterModes $ nextOperation ctx)
+    6 -> ProgramContext state newPos inputs outputs status
+      where 
+        newPos = doJumpIfFalse pos state (parameterModes $ nextOperation ctx)
+    7 -> ProgramContext newState (pos+4) inputs outputs status
+      where
+        newState = doLessThan pos state (parameterModes $ nextOperation ctx)
+    8 -> ProgramContext newState (pos+4) inputs outputs status
+      where
+        newState = doEquals pos state (parameterModes $ nextOperation ctx)
+    _ -> error $ "unsupported operation " ++ (show $ opCode $ nextOperation ctx)
 
-runOpWithoutIO :: Int -> Operation -> Program -> (Int, IO [Int])
-runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (newPos, return newState)
+runSimple :: Program -> ProgramContext
+runSimple prog = run $ ProgramContext prog 0 [] [] Ready
 
-runOpWithIO :: Int -> Operation -> Program -> (Int, IO [Int])
-runOpWithIO pos op state
-    | opCode op == 3 = (pos+2, inputInstr pos state)
-    | opCode op == 4 = (pos+2, outputInstr pos state $ head $ parameterModes op)
-    | otherwise = runOpWithoutIO pos op state
+runWithInputs :: Program -> [Int] -> ProgramContext
+runWithInputs prog ins = run $ ProgramContext prog 0 ins [] Ready
 
-runOpWithIOStub :: Int -> Operation -> Program -> [Int] -> (Int, Program, [Int], [Int])
-runOpWithIOStub pos op state inputs
-    | opCode op == 3 = (pos+2, replace (valAt (pos+1) state Immediate) (head inputs) state, [], tail inputs)
-    | opCode op == 4 = (pos+2, state, [valAt (pos+1) state $ head $ padParameterModes 1 $ parameterModes op], inputs)
-    | otherwise = let (np, ns) = runOp pos op state in (np, ns, [], inputs)
-
--- do not do IO operations, instead use inputs from provided list, return outputs
-runWithIOStub :: Int -> Program -> [Int] -> [Int]
-runWithIOStub pos state inputs = runWithIOStubImpl pos state inputs []
-
-runWithIOStubImpl :: Int -> Program -> [Int] -> [Int] -> [Int]
-runWithIOStubImpl pos state inputs outputs = let 
-    (nextPos, nextState, nextOuts, nextIns) = runOpWithIOStub pos (parseOperation $ state!!pos) state inputs
-    accOutputs = outputs ++ nextOuts
-    in 
-        if (nextPos < 0) then accOutputs
-        else runWithIOStubImpl nextPos nextState nextIns accOutputs
-
-runWithIO :: Int -> IO Program -> IO Program
-runWithIO pos state = do
-    s <- state
-    let op = parseOperation $ s!!pos
-        (nextPos, nextState) = runOpWithIO pos op s
-    if nextPos < 0 then nextState
-    else runWithIO nextPos nextState
-
-run :: Int -> Program -> Program
-run pos state = let (nextPos, nextState) = runOp pos (parseOperation $ state!!pos) state in
-    if (nextPos < 0) then nextState
-    else run nextPos nextState
+run :: ProgramContext -> ProgramContext
+run ctx@(ProgramContext state pos _ _ _) = 
+    if (status nextCtx) /= Ready 
+    then nextCtx
+    else run nextCtx
+  where
+    nextCtx = runOp ctx

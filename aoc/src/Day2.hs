@@ -18,7 +18,7 @@ startConfig :: (Int, Int) -> [Int]
 startConfig (a,b) = replace 1 a (replace 2 b input)
 
 progResults :: [(Int, Int, Int)]
-progResults = [(a, b, head (run 0 (startConfig sc))) | sc@(a,b) <- nounVerbCombos]
+progResults = [(a, b, head $ prog $ runSimple $ startConfig sc) | sc@(a,b) <- nounVerbCombos]
 
 winnerCombo :: [(Int, Int, Int)] -> (Int, Int)
 winnerCombo [] = (-1, -1)
