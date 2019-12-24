@@ -109,31 +109,40 @@ doTest ctx test = ctx { pos = (pos ctx) + 4, prog = newState }
     state = prog ctx
     newState = replace (valAt ctx (pos'+3) Immediate) val state 
 
+doRead :: ProgramContext -> ProgramContext
+doRead ctx =
+    if (length $ inputs ctx) > 0
+    then ctx { prog = nextState, pos = pos'+2, inputs = tail inputs' }
+    else ctx { status = Suspended }
+  where 
+    pos' = pos ctx
+    inputs' = inputs ctx
+    nextState = replace (valAt ctx (pos'+1) Immediate) (head inputs') $ prog ctx
+
+doWrite :: ProgramContext -> ProgramContext
+doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
+  where
+    pos' = pos ctx
+    output = valAt ctx (pos'+1) $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+
+doChangeRelBase :: ProgramContext -> ProgramContext
+doChangeRelBase ctx = ctx { pos = pos'+2, relBase = (relBase ctx) + valAt ctx (pos'+1) Immediate }
+  where
+    pos' = pos ctx
+
 runOp :: ProgramContext -> ProgramContext
 runOp ctx = case opCode $ nextOperation ctx of
     99 -> ctx { status = Finished }
     1 -> doAdd ctx 
     2 -> doMul ctx
-    3 -> 
-        if length inputs' > 0 
-        then ctx { prog = nextState, pos = pos'+2, inputs = tail inputs' }
-        else ctx { status = Suspended }
-      where 
-        nextState = replace (valAt ctx (pos'+1) Immediate) (head inputs') state 
-    4 -> ctx { pos = pos'+2, outputs = output:outputs' }
-      where 
-        output = valAt ctx (pos'+1) $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+    3 -> doRead ctx
+    4 -> doWrite ctx
     5 -> doJumpIfTrue ctx
     6 -> doJumpIfFalse ctx
     7 -> doLessThan ctx
     8 -> doEquals ctx
-    9 -> ctx { pos = pos'+2, relBase = (relBase ctx) + valAt ctx (pos'+1) Immediate }
+    9 -> doChangeRelBase ctx
     _ -> error $ "unsupported operation " ++ (show $ opCode $ nextOperation ctx)
-  where
-    state = prog ctx
-    pos' = pos ctx
-    inputs' = inputs ctx
-    outputs' = outputs ctx
 
 runSimple :: Program -> ProgramContext
 runSimple prog = run $ ProgramContext prog 0 [] [] Ready 0
