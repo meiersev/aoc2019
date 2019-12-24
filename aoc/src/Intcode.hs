@@ -2,7 +2,7 @@ module Intcode
   (
     Program
   , ProgramStatus (..)
-  , ProgramContext (ProgramContext, prog, outputs)
+  , ProgramContext (ProgramContext, prog, outputs, status)
 
   , run
   , runSimple
@@ -148,9 +148,6 @@ runWithInputs :: Program -> [Int] -> ProgramContext
 runWithInputs prog ins = run $ ProgramContext prog 0 ins [] Ready
 
 run :: ProgramContext -> ProgramContext
-run ctx@(ProgramContext state pos _ _ _) = 
-    if (status nextCtx) /= Ready 
-    then nextCtx
-    else run nextCtx
-  where
-    nextCtx = runOp ctx
+run ctx = case status ctx of 
+    Ready -> run $ runOp ctx
+    _ -> ctx
