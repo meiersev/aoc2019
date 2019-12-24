@@ -2,7 +2,7 @@ module Intcode
   (
     Program
   , ProgramStatus (..)
-  , ProgramContext (ProgramContext, prog, outputs, status)
+  , ProgramContext (..)
 
   , run
   , runSimple
@@ -17,7 +17,7 @@ data ProgramStatus
     = Ready 
     | Suspended 
     | Finished
-    deriving Eq
+    deriving (Eq, Show)
 
 data ProgramContext = ProgramContext 
     { prog :: Program
@@ -25,7 +25,7 @@ data ProgramContext = ProgramContext
     , inputs :: [Int]
     , outputs :: [Int]
     , status :: ProgramStatus
-    }
+    } deriving Show
 
 data ParameterMode 
     = Position 
