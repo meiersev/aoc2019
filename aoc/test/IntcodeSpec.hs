@@ -58,3 +58,9 @@ spec =
 
         it "can run with IO stub (ex4, day5)" $
             (outputs $ runWithInputs [3,3,1107,-1,8,3,4,3,99] [8]) `shouldBe` [0]
+
+        it "behaves the same with relative mode with offset 0" $
+            simpleEndState [2208,5,6,0,99,8,8] `shouldBe` [1,5,6,0,99,8,8]
+
+        it "can use relative mode" $
+            simpleEndState [9,2,2201,-2,0,7,99,0] `shouldBe` [9,2,2201,-2,0,7,99,2210]
