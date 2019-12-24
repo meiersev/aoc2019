@@ -44,3 +44,15 @@ spec =
 
         it "can compare in immediate mode, not less than" $
             run 0 [1107,8,8,5,99,-1] `shouldBe` [1107,8,8,5,99,0]
+
+        it "can run with IO stub (ex1, day5)" $
+            runWithIOStub 0 [3,9,8,9,10,9,4,9,99,-1,8] [8] `shouldBe` [1]
+
+        it "can run with IO stub (ex1, day5)" $
+            runWithIOStub 0 [3,9,8,9,10,9,4,9,99,-1,8] [9] `shouldBe` [0]
+
+        it "can run with IO stub (ex4, day5)" $
+            runWithIOStub 0 [3,3,1107,-1,8,3,4,3,99] [7] `shouldBe` [1]
+
+        it "can run with IO stub (ex4, day5)" $
+            runWithIOStub 0 [3,3,1107,-1,8,3,4,3,99] [8] `shouldBe` [0]

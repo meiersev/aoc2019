@@ -1,4 +1,4 @@
-module Intcode(run, runWithIO) where 
+module Intcode(run, runWithIO, runWithIOStub) where 
 
 import Utils
 
@@ -44,11 +44,11 @@ inputInstr :: Int -> [Int] -> IO [Int]
 inputInstr pos state = do
     input <- getLine
     let i = read input :: Int
-    return (replace (state!!(pos+1)) i state)
+    return $ replace (valAt (pos+1) state Immediate) i state
 
-outputInstr :: Int -> [Int] -> IO [Int]
-outputInstr pos state = do
-    print (valAt (pos+1) state Position)
+outputInstr :: Int -> [Int] -> ParameterMode -> IO [Int]
+outputInstr pos state mode = do
+    print $ valAt (pos+1) state mode
     return state
 
 doJumpIfTrue :: Int -> [Int] -> [ParameterMode] -> (Int, [Int])
@@ -90,8 +90,26 @@ runOpWithoutIO pos op state = let (newPos, newState) = runOp pos op state in (ne
 runOpWithIO :: Int -> Operation -> [Int] -> (Int, IO [Int])
 runOpWithIO pos op state
     | opCode op == 3 = (pos+2, inputInstr pos state)
-    | opCode op == 4 = (pos+2, outputInstr pos state)
+    | opCode op == 4 = (pos+2, outputInstr pos state $ head $ parameterModes op)
     | otherwise = runOpWithoutIO pos op state
+
+runOpWithIOStub :: Int -> Operation -> [Int] -> [Int] -> (Int, [Int], [Int], [Int])
+runOpWithIOStub pos op state inputs
+    | opCode op == 3 = (pos+2, replace (valAt (pos+1) state Immediate) (head inputs) state, [], tail inputs)
+    | opCode op == 4 = (pos+2, state, [valAt (pos+1) state $ head $ padParameterModes 1 $ parameterModes op], inputs)
+    | otherwise = let (np, ns) = runOp pos op state in (np, ns, [], inputs)
+
+-- do not do IO operations, instead use inputs from provided list, return outputs
+runWithIOStub :: Int -> [Int] -> [Int] -> [Int]
+runWithIOStub pos state inputs = runWithIOStubImpl pos state inputs []
+
+runWithIOStubImpl :: Int -> [Int] -> [Int] -> [Int] -> [Int]
+runWithIOStubImpl pos state inputs outputs = let 
+    (nextPos, nextState, nextOuts, nextIns) = runOpWithIOStub pos (parseOperation $ state!!pos) state inputs
+    accOutputs = outputs ++ nextOuts
+    in 
+        if (nextPos < 0) then accOutputs
+        else runWithIOStubImpl nextPos nextState nextIns accOutputs
 
 runWithIO :: Int -> IO [Int] -> IO [Int]
 runWithIO pos state = do
