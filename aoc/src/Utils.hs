@@ -1,4 +1,9 @@
-module Utils(replace, splitString) where
+module Utils
+  (
+    replace
+  , splitString
+  , rotateList
+  ) where
 
 -- replace position n in the list with val
 replace :: Int -> a -> [a] -> [a]
@@ -13,3 +18,10 @@ splitString str delimiter = let
     restOfString = (dropWhile testDel str)
     rest = if (length restOfString > 0) then splitString (tail restOfString) delimiter else []
     in firstMatch : rest
+
+rotateList :: Int -> [a] -> [a]
+rotateList _ [] = []
+rotateList n xs = take l $ drop fst $ cycle xs
+  where 
+    l = length xs
+    fst = l - (mod n l)
