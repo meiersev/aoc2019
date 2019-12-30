@@ -81,10 +81,11 @@ valAt ctx pos mode
     instrVal = withDefault pos
 
 store :: ProgramContext -> Int -> ParameterMode -> Int -> State
-store ctx adr mode val
+store ctx adrPos mode val
     | mode == Immediate || mode == Default = IntMap.insert adr val state
     | mode == Relative = IntMap.insert (adr+rel) val state 
   where
+    adr = valAt ctx adrPos Immediate
     state = prog ctx
     rel = relBase ctx
 
@@ -92,11 +93,10 @@ doAdd ctx = doBinOp ctx (+)
 doMul ctx = doBinOp ctx (*)
 
 doBinOp :: ProgramContext -> (Int -> Int -> Int) -> ProgramContext
-doBinOp ctx binOp = ctx { prog = store ctx resultAddr (paddedModes!!2) result, pos = pos'+4 }
+doBinOp ctx binOp = ctx { prog = store ctx (pos'+3) (paddedModes!!2) result, pos = pos'+4 }
   where
     pos' = pos ctx
     paddedModes = padParameterModes 3 $ parameterModes $ nextOperation ctx
-    resultAddr = valAt ctx (pos'+3) $ Immediate
     operand1 = valAt ctx (pos'+1) $ paddedModes!!0
     operand2 = valAt ctx (pos'+2) $ paddedModes!!1
     result = operand1 `binOp` operand2
@@ -125,7 +125,7 @@ doTest ctx test = ctx { pos = (pos ctx) + 4, prog = newState }
     set = test (valAt ctx (pos'+1) $ paddedModes!!0) (valAt ctx (pos'+2) $ paddedModes!!1)
     val = if set then 1 else 0
     state = prog ctx
-    newState = store ctx (valAt ctx (pos'+3) Immediate) (paddedModes!!2) val
+    newState = store ctx (pos'+3) (paddedModes!!2) val
 
 doRead :: ProgramContext -> ProgramContext
 doRead ctx =
@@ -136,7 +136,7 @@ doRead ctx =
     pos' = pos ctx
     inputs' = inputs ctx
     paddedModes = padParameterModes 1 $ parameterModes $ nextOperation ctx
-    nextState = store ctx (valAt ctx (pos'+1) Immediate) (head paddedModes) (head inputs')
+    nextState = store ctx (pos'+1) (head paddedModes) (head inputs')
 
 doWrite :: ProgramContext -> ProgramContext
 doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
