@@ -63,10 +63,12 @@ parseOperation x = let
 nextOperation :: ProgramContext -> Operation
 nextOperation ctx = parseOperation $ valAt ctx (pos ctx) Immediate
 
-padParameterModes :: Int -> [ParameterMode] -> [ParameterMode]
-padParameterModes n modes = let
+paddedParameterModes :: Int -> ProgramContext -> [ParameterMode]
+paddedParameterModes n ctx = modes ++ (replicate paddingSize Default)
+  where
+    op = nextOperation ctx
+    modes = parameterModes op
     paddingSize = n - (length modes)
-    in modes ++ (replicate paddingSize Default)
 
 readState :: Int -> ProgramContext -> Int
 readState at ctx = valAt ctx at Immediate
@@ -96,7 +98,7 @@ doBinOp :: ProgramContext -> (Int -> Int -> Int) -> ProgramContext
 doBinOp ctx binOp = ctx { prog = store ctx (pos'+3) (paddedModes!!2) result, pos = pos'+4 }
   where
     pos' = pos ctx
-    paddedModes = padParameterModes 3 $ parameterModes $ nextOperation ctx
+    paddedModes = paddedParameterModes 3 ctx
     operand1 = valAt ctx (pos'+1) $ paddedModes!!0
     operand2 = valAt ctx (pos'+2) $ paddedModes!!1
     result = operand1 `binOp` operand2
@@ -111,7 +113,7 @@ doJumpIf ctx test =
     else ctx { pos = pos'+3 }
   where
     pos' = pos ctx
-    paddedModes = padParameterModes 2 $ parameterModes $ nextOperation ctx
+    paddedModes = paddedParameterModes 2 ctx
     doJump = test $ valAt ctx (pos'+1) $ head paddedModes
 
 doLessThan ctx = doTest ctx (<) 
@@ -120,7 +122,7 @@ doEquals ctx = doTest ctx (==)
 doTest :: ProgramContext -> (Int -> Int -> Bool) -> ProgramContext
 doTest ctx test = ctx { pos = (pos ctx) + 4, prog = newState }
   where
-    paddedModes = padParameterModes 3 $ parameterModes $ nextOperation ctx
+    paddedModes = paddedParameterModes 3 ctx
     pos' = pos ctx
     set = test (valAt ctx (pos'+1) $ paddedModes!!0) (valAt ctx (pos'+2) $ paddedModes!!1)
     val = if set then 1 else 0
@@ -135,19 +137,19 @@ doRead ctx =
   where 
     pos' = pos ctx
     inputs' = inputs ctx
-    paddedModes = padParameterModes 1 $ parameterModes $ nextOperation ctx
+    paddedModes = paddedParameterModes 1 ctx
     nextState = store ctx (pos'+1) (head paddedModes) (head inputs')
 
 doWrite :: ProgramContext -> ProgramContext
 doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
   where
     pos' = pos ctx
-    output = valAt ctx (pos'+1) $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+    output = valAt ctx (pos'+1) $ head $ paddedParameterModes 1 ctx
 
 doChangeRelBase :: ProgramContext -> ProgramContext
 doChangeRelBase ctx = ctx { pos = pos'+2, relBase = (relBase ctx) + valAt ctx (pos'+1) mode }
   where
-    mode = head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
+    mode = head $ paddedParameterModes 1 ctx
     pos' = pos ctx
 
 runOp :: ProgramContext -> ProgramContext
