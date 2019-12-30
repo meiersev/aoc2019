@@ -66,4 +66,5 @@ test-suite aoc-test
       aoc
     , base >=4.7 && <5
     , hspec
+    , containers
   default-language: Haskell2010

@@ -42,7 +42,7 @@ input = do
 runPart1 :: IO ()
 runPart1 = do
     prog <- input
-    print $ tryAllPhases phases prog
+    print $ tryAllPhases phases $ prog
 
 -- Part 2
 phasesPt2 :: [[Int]]
@@ -51,8 +51,9 @@ phasesPt2 = permutations [5..9]
 initAmplifiers :: Program -> [Int] -> [ProgramContext]
 initAmplifiers prog phases = ampA : amps
   where
-    ampA = ProgramContext prog 0 [head phases, 0] [] Ready 0
-    amps = map (\p -> ProgramContext prog 0 [p] [] Ready 0) $ tail phases
+    state = fromIntList prog
+    ampA = ProgramContext state 0 [head phases, 0] [] Ready 0
+    amps = map (\p -> ProgramContext state 0 [p] [] Ready 0) $ tail phases
 
 anyAmpWithStatus s = any (\amp -> status amp == s)
 

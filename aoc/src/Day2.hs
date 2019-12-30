@@ -14,11 +14,11 @@ target = 19690720
 possibilities = [0..99]
 nounVerbCombos = [(a, b) | a <- possibilities, b <- possibilities]
 
-startConfig :: (Int, Int) -> [Int]
+startConfig :: (Int, Int) -> Program
 startConfig (a,b) = replace 1 a (replace 2 b input)
 
 progResults :: [(Int, Int, Int)]
-progResults = [(a, b, head $ prog $ runSimple $ startConfig sc) | sc@(a,b) <- nounVerbCombos]
+progResults = [(a, b, readState 0 $ runSimple $ startConfig sc) | sc@(a,b) <- nounVerbCombos]
 
 winnerCombo :: [(Int, Int, Int)] -> (Int, Int)
 winnerCombo [] = (-1, -1)

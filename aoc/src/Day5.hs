@@ -32,7 +32,7 @@ testPart2 = do
     putStrLn "select test (1-7):"
     whichTest <- getLine
     let testN = read whichTest :: Int
-        input = testInputsPart2!!(testN-1)
+    let input = testInputsPart2!!(testN-1)
     let resCtx = runWithInputs input [5]
     print $ outputs resCtx
     return ()

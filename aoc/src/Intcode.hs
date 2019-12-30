@@ -4,14 +4,20 @@ module Intcode
   , ProgramStatus (..)
   , ProgramContext (..)
 
+  , fromIntList
+  , readState
   , run
   , runSimple
   , runWithInputs
   ) where 
 
-import Utils
+import qualified Data.IntMap.Strict as IntMap
 
 type Program = [Int]
+type State = IntMap.IntMap Int
+
+fromIntList :: Program -> State
+fromIntList xs = IntMap.fromDistinctAscList $ zip [0..(length xs -1)] xs
 
 data ProgramStatus 
     = Ready 
@@ -20,7 +26,7 @@ data ProgramStatus
     deriving (Eq, Show)
 
 data ProgramContext = ProgramContext 
-    { prog :: Program
+    { prog :: State
     , pos :: Int
     , inputs :: [Int]
     , outputs :: [Int]
@@ -54,27 +60,33 @@ parseOperation x = let
     in Operation opCode modes
 
 nextOperation :: ProgramContext -> Operation
-nextOperation ctx = parseOperation $ (prog ctx)!!(pos ctx)
+nextOperation ctx = parseOperation $ valAt ctx (pos ctx) Immediate
 
 padParameterModes :: Int -> [ParameterMode] -> [ParameterMode]
 padParameterModes n modes = let
     paddingSize = n - (length modes)
     in modes ++ (replicate paddingSize Position)
 
+store :: Int -> Int -> State -> State
+store adr val prog = IntMap.insert adr val prog
+
+readState :: Int -> ProgramContext -> Int
+readState at ctx = valAt ctx at Immediate
+
 valAt :: ProgramContext -> Int -> ParameterMode -> Int
 valAt ctx pos mode
-    | mode == Position = state!!instrVal
+    | mode == Position = withDefault instrVal
     | mode == Immediate = instrVal
-    | mode == Relative = state!!(instrVal + (relBase ctx))
+    | mode == Relative = withDefault $ instrVal + (relBase ctx)
   where
-    state = prog ctx
-    instrVal = state!!pos
+    withDefault at = IntMap.findWithDefault 0 at $ prog ctx
+    instrVal = withDefault pos
 
 doAdd ctx = doBinOp ctx (+)
 doMul ctx = doBinOp ctx (*)
 
 doBinOp :: ProgramContext -> (Int -> Int -> Int) -> ProgramContext
-doBinOp ctx binOp = ctx { prog = replace resultAddr result $ prog ctx, pos = pos'+4 }
+doBinOp ctx binOp = ctx { prog = store resultAddr result $ prog ctx, pos = pos'+4 }
   where
     pos' = pos ctx
     paddedModes = padParameterModes 2 $ parameterModes $ nextOperation ctx
@@ -107,7 +119,7 @@ doTest ctx test = ctx { pos = (pos ctx) + 4, prog = newState }
     set = test (valAt ctx (pos'+1) $ head paddedModes) (valAt ctx (pos'+2) $ last paddedModes)
     val = if set then 1 else 0
     state = prog ctx
-    newState = replace (valAt ctx (pos'+3) Immediate) val state 
+    newState = store (valAt ctx (pos'+3) Immediate) val state 
 
 doRead :: ProgramContext -> ProgramContext
 doRead ctx =
@@ -117,7 +129,7 @@ doRead ctx =
   where 
     pos' = pos ctx
     inputs' = inputs ctx
-    nextState = replace (valAt ctx (pos'+1) Immediate) (head inputs') $ prog ctx
+    nextState = store (valAt ctx (pos'+1) Immediate) (head inputs') $ prog ctx
 
 doWrite :: ProgramContext -> ProgramContext
 doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
@@ -144,11 +156,13 @@ runOp ctx = case opCode $ nextOperation ctx of
     9 -> doChangeRelBase ctx
     _ -> error $ "unsupported operation " ++ (show $ opCode $ nextOperation ctx)
 
-runSimple :: Program -> ProgramContext
-runSimple prog = run $ ProgramContext prog 0 [] [] Ready 0
+runSimple :: [Int] -> ProgramContext
+runSimple prog = runWithInputs prog []
 
-runWithInputs :: Program -> [Int] -> ProgramContext
-runWithInputs prog ins = run $ ProgramContext prog 0 ins [] Ready 0
+runWithInputs :: [Int] -> [Int] -> ProgramContext
+runWithInputs prog ins = run $ ProgramContext progMap 0 ins [] Ready 0
+  where
+    progMap = fromIntList prog
 
 run :: ProgramContext -> ProgramContext
 run ctx = case status ctx of 

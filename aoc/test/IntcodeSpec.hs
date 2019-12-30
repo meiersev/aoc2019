@@ -2,8 +2,9 @@ module IntcodeSpec(spec) where
 
 import Test.Hspec
 import Intcode
+import qualified Data.IntMap.Strict as IntMap
 
-simpleEndState = prog.runSimple
+simpleEndState = IntMap.elems.prog.runSimple
 
 spec :: Spec
 spec = 
@@ -64,3 +65,7 @@ spec =
 
         it "can use relative mode" $
             simpleEndState [9,2,2201,-2,0,7,99,0] `shouldBe` [9,2,2201,-2,0,7,99,2210]
+
+        it "can run quine" $ 
+            let quine = [109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99] in
+            (outputs $ runSimple quine) `shouldBe` reverse quine
