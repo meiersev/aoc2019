@@ -13,6 +13,7 @@ module Intcode
 
 import qualified Data.IntMap.Strict as IntMap
 
+import Operation
 import ParameterMode
 
 type Program = [Int]
@@ -35,19 +36,6 @@ data ProgramContext = ProgramContext
     , status :: ProgramStatus
     , relBase :: Int
     } deriving Show
-
-data Operation = Operation 
-    { opCode :: Int
-    , parameterModes :: [ParameterMode]
-    } deriving Show
-
-parseOperation :: Int -> Operation
-parseOperation x = let 
-    digits = show x
-    (modeDigits, opCodeDigits) = splitAt (length digits - 2) digits
-    opCode = read opCodeDigits
-    modes = map (toMode.read.(\c -> [c])) (reverse modeDigits) 
-    in Operation opCode modes
 
 nextOperation :: ProgramContext -> Operation
 nextOperation ctx = parseOperation $ valAt ctx (pos ctx) Immediate
