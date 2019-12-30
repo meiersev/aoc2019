@@ -13,6 +13,8 @@ module Intcode
 
 import qualified Data.IntMap.Strict as IntMap
 
+import ParameterMode
+
 type Program = [Int]
 type State = IntMap.IntMap Int
 
@@ -33,19 +35,6 @@ data ProgramContext = ProgramContext
     , status :: ProgramStatus
     , relBase :: Int
     } deriving Show
-
-data ParameterMode 
-    = Default
-    | Position 
-    | Immediate 
-    | Relative
-    deriving (Eq, Show)
-
-toMode :: Int -> ParameterMode
-toMode 0 = Position
-toMode 1 = Immediate
-toMode 2 = Relative
-toMode x = error $ "unsupported parameter mode " ++ (show x)
 
 data Operation = Operation 
     { opCode :: Int

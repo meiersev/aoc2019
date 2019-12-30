@@ -35,6 +35,7 @@ library
       Intcode
   other-modules:
       Paths_aoc
+      ParameterMode
   hs-source-dirs:
       src
     , src/intcode
