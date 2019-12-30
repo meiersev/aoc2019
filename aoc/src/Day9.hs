@@ -15,3 +15,7 @@ input = do
 runPart1 = do
     prog <- input
     print $ outputs $ runWithInputs prog [1]
+
+runPart2 = do
+    prog <- input
+    print $ outputs $ runWithInputs prog [2]
