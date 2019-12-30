@@ -30,6 +30,7 @@ library
       Day5
       Day6
       Day7
+      Day9
       Utils
       Intcode
   other-modules:

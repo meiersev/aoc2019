@@ -35,7 +35,8 @@ data ProgramContext = ProgramContext
     } deriving Show
 
 data ParameterMode 
-    = Position 
+    = Default
+    | Position 
     | Immediate 
     | Relative
     deriving (Eq, Show)
@@ -65,34 +66,39 @@ nextOperation ctx = parseOperation $ valAt ctx (pos ctx) Immediate
 padParameterModes :: Int -> [ParameterMode] -> [ParameterMode]
 padParameterModes n modes = let
     paddingSize = n - (length modes)
-    in modes ++ (replicate paddingSize Position)
-
-store :: Int -> Int -> State -> State
-store adr val prog = IntMap.insert adr val prog
+    in modes ++ (replicate paddingSize Default)
 
 readState :: Int -> ProgramContext -> Int
 readState at ctx = valAt ctx at Immediate
 
 valAt :: ProgramContext -> Int -> ParameterMode -> Int
 valAt ctx pos mode
-    | mode == Position = withDefault instrVal
+    | mode == Position || mode == Default = withDefault instrVal
     | mode == Immediate = instrVal
     | mode == Relative = withDefault $ instrVal + (relBase ctx)
   where
     withDefault at = IntMap.findWithDefault 0 at $ prog ctx
     instrVal = withDefault pos
 
+store :: ProgramContext -> Int -> ParameterMode -> Int -> State
+store ctx adr mode val
+    | mode == Immediate || mode == Default = IntMap.insert adr val state
+    | mode == Relative = IntMap.insert (adr+rel) val state 
+  where
+    state = prog ctx
+    rel = relBase ctx
+
 doAdd ctx = doBinOp ctx (+)
 doMul ctx = doBinOp ctx (*)
 
 doBinOp :: ProgramContext -> (Int -> Int -> Int) -> ProgramContext
-doBinOp ctx binOp = ctx { prog = store resultAddr result $ prog ctx, pos = pos'+4 }
+doBinOp ctx binOp = ctx { prog = store ctx resultAddr (paddedModes!!2) result, pos = pos'+4 }
   where
     pos' = pos ctx
-    paddedModes = padParameterModes 2 $ parameterModes $ nextOperation ctx
-    resultAddr = valAt ctx (pos'+3) Immediate
-    operand1 = valAt ctx (pos'+1) $ head paddedModes
-    operand2 = valAt ctx (pos'+2) $ last paddedModes
+    paddedModes = padParameterModes 3 $ parameterModes $ nextOperation ctx
+    resultAddr = valAt ctx (pos'+3) $ Immediate
+    operand1 = valAt ctx (pos'+1) $ paddedModes!!0
+    operand2 = valAt ctx (pos'+2) $ paddedModes!!1
     result = operand1 `binOp` operand2
 
 doJumpIfTrue ctx = doJumpIf ctx (\x -> x /= 0)
@@ -114,12 +120,12 @@ doEquals ctx = doTest ctx (==)
 doTest :: ProgramContext -> (Int -> Int -> Bool) -> ProgramContext
 doTest ctx test = ctx { pos = (pos ctx) + 4, prog = newState }
   where
-    paddedModes = padParameterModes 2 $ parameterModes $ nextOperation ctx
+    paddedModes = padParameterModes 3 $ parameterModes $ nextOperation ctx
     pos' = pos ctx
-    set = test (valAt ctx (pos'+1) $ head paddedModes) (valAt ctx (pos'+2) $ last paddedModes)
+    set = test (valAt ctx (pos'+1) $ paddedModes!!0) (valAt ctx (pos'+2) $ paddedModes!!1)
     val = if set then 1 else 0
     state = prog ctx
-    newState = store (valAt ctx (pos'+3) Immediate) val state 
+    newState = store ctx (valAt ctx (pos'+3) Immediate) (paddedModes!!2) val
 
 doRead :: ProgramContext -> ProgramContext
 doRead ctx =
@@ -129,7 +135,8 @@ doRead ctx =
   where 
     pos' = pos ctx
     inputs' = inputs ctx
-    nextState = store (valAt ctx (pos'+1) Immediate) (head inputs') $ prog ctx
+    paddedModes = padParameterModes 1 $ parameterModes $ nextOperation ctx
+    nextState = store ctx (valAt ctx (pos'+1) Immediate) (head paddedModes) (head inputs')
 
 doWrite :: ProgramContext -> ProgramContext
 doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
@@ -138,8 +145,9 @@ doWrite ctx = ctx { pos = pos'+2, outputs = output:(outputs ctx) }
     output = valAt ctx (pos'+1) $ head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
 
 doChangeRelBase :: ProgramContext -> ProgramContext
-doChangeRelBase ctx = ctx { pos = pos'+2, relBase = (relBase ctx) + valAt ctx (pos'+1) Immediate }
+doChangeRelBase ctx = ctx { pos = pos'+2, relBase = (relBase ctx) + valAt ctx (pos'+1) mode }
   where
+    mode = head $ padParameterModes 1 $ parameterModes $ nextOperation ctx
     pos' = pos ctx
 
 runOp :: ProgramContext -> ProgramContext
