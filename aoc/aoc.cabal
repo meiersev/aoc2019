@@ -37,6 +37,7 @@ library
       Paths_aoc
   hs-source-dirs:
       src
+    , src/intcode
   build-depends:
       base >=4.7 && <5
     , containers
